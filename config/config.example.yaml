@@ -1,0 +1,29 @@
+llm:
+  router: "litellm"
+  default_model: "gpt-5"
+  embeddings_model: "text-embedding-3-large"
+  vision_model: "gpt-5-vision-mini"
+  budgets:
+    per_call_timeout_s: 12
+    per_turn_budget_s: 25
+stores:
+  postgres_dsn: postgresql://eds:eds@postgres/eds
+  pgvector_enabled: true
+  neo4j_uri: bolt://neo4j:7687
+  blob_store: local
+  blob_root: ./data/blobs
+connectors:
+  - name: local
+    roots: ["./samples"]
+    include: ["**/*.pdf", "**/*.docx", "**/*.pptx", "**/*.xlsx", "**/*.csv", "**/*.eml", "**/*.msg", "**/*.md", "**/*.png", "**/*.jpg"]
+    exclude: ["**/node_modules/**", "**/.git/**"]
+security:
+  authn: none  # Phase 1: OIDC/SAML
+  allowed_paths: ["./samples"]
+logging:
+  level: INFO  # ERROR|WARN|INFO|DEBUG|TRACE
+  json: true
+transport:
+  mcp:
+    stdio: true
+    http_ws_gateway: true
