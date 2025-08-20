@@ -1,0 +1,356 @@
+**Goal of M0**: An end-to-end happy path working in Codespaces or locally — ingest a small local corpus → run a query → get a synthesized text answer with basic citations/paths. No AuthN/AuthZ. Logging levels switchable. CI green. Faux corpus + basic benchmark harness in place.
+
+---
+
+## Labels to use
+- `area:repo`, `area:backend`, `area:frontend`, `area:ingestion`, `area:query`, `area:ci`, `area:ops`, `area:data`
+- `type:feat`, `type:chore`, `type:test`, `type:docs`
+- `milestone:M0`
+
+## Exit criteria (M0 “ship” checklist)
+- [ ] In Codespaces: run bootstrap → `docker compose up` → ingest faux corpus → run 3 golden queries → answers include citations/paths.
+- [ ] CI green on `main` (backend lint/type/tests + frontend build).
+- [ ] Log level env works; timeouts fail gracefully (no server crash).
+- [ ] Quickstart & faux data/bench docs updated.
+
+---
+
+## Suggested order of execution
+1. **A** Repo/Dev → **C** DB → **B** API/MCP skeleton  
+2. **D** Ingestion minimal → **E** Query minimal  
+3. **I** Faux corpus + golden queries + bench  
+4. **F** Frontend → **G** Logging → **H** CI/tests/PR reviewer
+
+---
+
+## A) Repo, Dev Experience, Scaffolding
+
+### M0-A1 — Initialize repo baseline
+**Labels:** `area:repo`, `type:chore`, `milestone:M0`  
+**DoD:**
+- README, `.editorconfig`, `.gitignore`, LICENSE, CODEOWNERS committed.
+
+### M0-A2 — Issue & PR templates
+**Labels:** `area:repo`, `type:chore`, `milestone:M0`  
+**DoD:**
+- `.github/ISSUE_TEMPLATE/*.md` for bug/feature/chore.
+- `.github/pull_request_template.md` with checklist.
+
+### M0-A3 — Devcontainer for Codespaces
+**Labels:** `area:repo`, `type:feat`, `milestone:M0`  
+**DoD:**
+- `.devcontainer/devcontainer.json` (Node 20, Python 3.11, Docker-in-Docker).
+- `postCreateCommand` runs `make bootstrap` and `docker compose build`.
+
+### M0-A4 — Makefile targets
+**Labels:** `area:repo`, `type:chore`, `milestone:M0`  
+**DoD:**
+- `bootstrap`, `backend.dev`, `frontend.dev`, `backend.test`, `frontend.build` all work.
+
+### M0-A5 — Docker Compose stack
+**Labels:** `area:repo`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Services: `postgres`, `neo4j`, `backend`, `frontend` with sensible ports/volumes.
+- Basic health check notes in README.
+
+### M0-A6 — Config + env stubs
+**Labels:** `area:repo`, `type:feat`, `milestone:M0`  
+**DoD:**
+- `.env.example` and `config/config.example.yaml` exist and load.
+
+### M0-A7 — Bootstrap scripts
+**Labels:** `area:repo`, `type:chore`, `milestone:M0`  
+**DoD:**
+- `scripts/bootstrap.sh` sets up venv + installs deps.
+
+### M0-A8 — “Hello world” smoke doc
+**Labels:** `area:repo`, `type:docs`, `milestone:M0`  
+**DoD:**
+- `docs/hello_m0.md` explaining how to run M0 locally and in Codespaces.
+
+---
+
+## B) Backend API (FastAPI) & MCP Skeleton
+
+### M0-B1 — FastAPI skeleton
+**Labels:** `area:backend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- `/healthz` and `/readyz` return JSON; app boots under Uvicorn.
+
+### M0-B2 — Settings/config loader
+**Labels:** `area:backend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Pydantic settings merging ENV + YAML; accessible in app state.
+
+### M0-B3 — MCP tool registry scaffold
+**Labels:** `area:backend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Tool metadata listable; JSON Schema stubs for inputs/outputs.
+
+### M0-B4 — MCP transport adapters (dev stubs)
+**Labels:** `area:backend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Stdio stub for local dev; HTTP/WS gateway stub routes requests to tools.
+
+### M0-B5 — Tool: `ingest.run`
+**Labels:** `area:backend`, `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Accepts path(s); runs inline (no queue yet); returns job id and counts.
+
+### M0-B6 — Tool: `ingest.status`
+**Labels:** `area:backend`, `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- In-memory job status map: queued/running/succeeded/failed with totals.
+
+### M0-B7 — Tool: `search.content` (stub → MVP)
+**Labels:** `area:backend`, `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Accepts query; returns synthesized answer + citations list (even if empty at first).
+
+### M0-B8 — Tool: `search.metadata` (stub)
+**Labels:** `area:backend`, `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Accepts filters; returns empty rows initially.
+
+### M0-B9 — Tool: `chat.context.save/get`
+**Labels:** `area:backend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- In-memory per-chat map; keyed by chat/session id.
+
+### M0-B10 — Error envelopes & timeouts
+**Labels:** `area:backend`, `area:ops`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Middleware wraps errors in JSON; per-call timeout env; logs correlation id.
+
+---
+
+## C) Storage, Schema, and Init
+
+### M0-C1 — Postgres init + Alembic baseline
+**Labels:** `area:backend`, `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- DB up; base migration applied in CI and dev.
+
+### M0-C2 — pgvector enablement + embeddings table
+**Labels:** `area:backend`, `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Extension enabled; embeddings table exists with index.
+
+### M0-C3 — Minimal metadata schema
+**Labels:** `area:backend`, `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Tables: documents, chunks, files, jobs, (entities placeholder).
+
+### M0-C4 — Neo4j connection sanity
+**Labels:** `area:backend`, `area:ingestion`, `type:chore`, `milestone:M0`  
+**DoD:**
+- App can connect; simple read/write round-trip; KG queries deferred to later.
+
+### M0-C5 — DB helpers + migrations check
+**Labels:** `area:backend`, `type:chore`, `milestone:M0`  
+**DoD:**
+- SQLAlchemy session helpers; migration check runs in CI.
+
+---
+
+## D) Ingestion (minimal path)
+
+### M0-D1 — Local connector
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Include/exclude globs; file walk; size/type guards; returns candidate file list.
+
+### M0-D2 — MIME/type detection + registry
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Processor registry keyed by MIME/ext; default text/markdown handler.
+
+### M0-D3 — BaseProcessor & ProcessResult
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Common interface returning text + metadata + images (images ignored for M0).
+
+### M0-D4 — Processor: TXT/MD
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Extracts text & basic metadata (filename, size, modified time).
+
+### M0-D5 — Processor: PDF (text only)
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- PyMuPDF to extract text, title/author if present; no OCR/images in M0.
+
+### M0-D6 — Processor: EML (email files)
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- mailparser to read From/To/Cc/Subject/Date; body text; basic signature/quote stripping.
+
+### M0-D7 — Chunking strategy
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Paragraph/sentence rules; token target ~400–1200; store boundaries in DB.
+
+### M0-D8 — Embeddings + persistence
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- LiteLLM embeddings; write to pgvector; link to chunk/document ids.
+
+### M0-D9 — Dedup/versioning
+**Labels:** `area:ingestion`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Hash files; upsert on change; update chunks/embeddings accordingly.
+
+### M0-D10 — Ingestion status & metrics
+**Labels:** `area:ingestion`, `area:ops`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Counts and timing per run; failure list; exposed via `ingest.status`.
+
+---
+
+## E) Query Orchestration (minimal)
+
+### M0-E1 — Plugin interfaces
+**Labels:** `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Content/Metadata/Graph plugin classes with typed method signatures.
+
+### M0-E2 — Hybrid retrieval MVP
+**Labels:** `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- BM25 or TF-IDF (SQL/fts fallback) + vector top-k union; returns candidate chunks.
+
+### M0-E3 — Simple re-rank & k
+**Labels:** `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Weighted score fusion; configurable k; deterministic ordering.
+
+### M0-E4 — Answer synthesis + citations
+**Labels:** `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- LiteLLM chat call; answer text + citations (doc_id, chunk_id, score, path).
+
+### M0-E5 — Orchestrator path
+**Labels:** `area:query`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Plan → retrieve → synthesize; single-threaded; logs timing per stage.
+
+### M0-E6 — Response shape contract
+**Labels:** `area:query`, `type:chore`, `milestone:M0`  
+**DoD:**
+- Clear JSON: `private.sources[]` vs `public.notes`; stable fields for UI.
+
+---
+
+## F) Frontend (Next.js client)
+
+### M0-F1 — Chat UI shell
+**Labels:** `area:frontend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Prompt box, send, basic markdown render, loading state.
+
+### M0-F2 — Call backend & render citations
+**Labels:** `area:frontend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- POST to gateway; render answer & citations list (title/path/score).
+
+### M0-F3 — Setup page (stub)
+**Labels:** `area:frontend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Display current config; show instructions to edit `.env`/`config.yaml`.
+
+### M0-F4 — Jobs page (ingest status)
+**Labels:** `area:frontend`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Poll `ingest.status`; show runs, failures, counts.
+
+### M0-F5 — Client-side chat memory
+**Labels:** `area:frontend`, `type:chore`, `milestone:M0`  
+**DoD:**
+- Maintain thread id; send it on subsequent queries.
+
+### M0-F6 — Error handling UX
+**Labels:** `area:frontend`, `type:chore`, `milestone:M0`  
+**DoD:**
+- Toasts for errors/timeouts; retry button.
+
+---
+
+## G) Observability & Logging
+
+### M0-G1 — Structured logs + log levels
+**Labels:** `area:ops`, `type:feat`, `milestone:M0`  
+**DoD:**
+- JSON logs; `LOG_LEVEL` env; DEBUG adds more fields.
+
+### M0-G2 — Correlation/request IDs
+**Labels:** `area:ops`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Generate & propagate request id through orchestrator and tool calls.
+
+### M0-G3 — Basic counters
+**Labels:** `area:ops`, `type:chore`, `milestone:M0`  
+**DoD:**
+- Log query count, ingested docs, failures, latencies (ms).
+
+### M0-G4 — Health/readiness checks verify DBs
+**Labels:** `area:ops`, `type:chore`, `milestone:M0`  
+**DoD:**
+- `/readyz` ensures Postgres/Neo4j reachable.
+
+---
+
+## H) CI, QA, and PR Review
+
+### M0-H1 — Backend CI: lint/type/tests
+**Labels:** `area:ci`, `type:test`, `milestone:M0`  
+**DoD:**
+- Ruff, mypy, pytest jobs succeed in GH Actions.
+
+### M0-H2 — Frontend CI: build
+**Labels:** `area:ci`, `type:test`, `milestone:M0`  
+**DoD:**
+- Next build step passes in GH Actions.
+
+### M0-H3 — PR LLM reviewer workflow
+**Labels:** `area:ci`, `type:feat`, `milestone:M0`  
+**DoD:**
+- Workflow comments on PRs using `OPENAI_API_KEY` secret.
+
+### M0-H4 — Minimal backend tests
+**Labels:** `area:ci`, `type:test`, `milestone:M0`  
+**DoD:**
+- Tests for `/healthz`; ingest→retrieve with tiny corpus returns ≥1 citation.
+
+### M0-H5 — (Stretch) Playwright smoke
+**Labels:** `area:ci`, `type:test`, `milestone:M0`  
+**DoD:**
+- UI loads; submit prompt; answer block renders.
+
+---
+
+## I) Faux Data & Benchmarks (critical)
+
+### M0-I1 — Faux corpus generator
+**Labels:** `area:data`, `type:feat`, `milestone:M0`  
+**DoD:**
+- `scripts/generate_faux_corpus.py` creates:
+  - 10–20 TXT/MD with overlapping domain terms.
+  - 5–10 PDF (text-only) with headings/bullets/footers.
+  - 5–10 EML threads (3–5 messages) on themes “Project X/Y” with replies/fwd + sigs/quotes.
+  - 3–5 CSV/XLSX (optional in M0) and MD summaries.
+  - Noise docs & near-duplicates; 1–2 multilingual docs; a few synthetic PII-like strings.
+
+### M0-I2 — Golden queries
+**Labels:** `area:data`, `type:test`, `milestone:M0`  
+**DoD:**
+- YAML mapping of query → expected doc ids/keywords; used in tests and bench.
+
+### M0-I3 — Mini benchmark harness
+**Labels:** `area:data`, `type:test`, `milestone:M0`  
+**DoD:**
+- `scripts/bench_m0.py` runs: ingest latency, query P50/P95; outputs JSON/CSV.
+
+### M0-I4 — Docs for faux data & bench
+**Labels:** `area:data`, `type:docs`, `milestone:M0`  
+**DoD:**
+- `docs/faux_data.md` and `docs/benchmarks.md` with sample commands and expected output shapes.
